@@ -2,15 +2,18 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/fulldump/box"
 	"github.com/fulldump/goconfig"
+
 	"instantlogs/api"
 	"instantlogs/service"
-	"net/http"
 )
 
 type Config struct {
-	Addr string
+	Addr       string
+	StaticsDir string
 }
 
 func main() {
@@ -22,7 +25,7 @@ func main() {
 
 	s := service.NewService()
 
-	a := api.NewApi(s)
+	a := api.NewApi(s, c.StaticsDir)
 
 	server := &http.Server{
 		Addr:    c.Addr,

@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/fulldump/box"
-	"instantlogs/service"
 	"net/http"
+
+	"github.com/fulldump/box"
+	
+	"instantlogs/service"
+	"instantlogs/statics"
 )
 
-func NewApi(service *service.Service) *box.B {
+func NewApi(service *service.Service, staticsDir string) *box.B {
 
 	b := box.NewBox()
 
@@ -19,20 +22,22 @@ func NewApi(service *service.Service) *box.B {
 		}
 	})
 
-	b.Resource("/ingest").
-		WithActions(
-			box.Post(ingest),
-		)
+	b.Resource("/ingest").WithActions(
+		box.Post(ingest),
+	)
 
-	b.Resource("/filter").
-		WithActions(
-			box.Get(filter),
-		)
+	b.Resource("/filter").WithActions(
+		box.Get(filter),
+	)
 
-	b.Resource("/stats").
-		WithActions(
-			box.Get(stats),
-		)
+	b.Resource("/stats").WithActions(
+		box.Get(stats),
+	)
+
+	// Mount statics
+	b.Resource("/*").WithActions(
+		box.Get(statics.ServeStatics(staticsDir)),
+	)
 
 	return b
 }
