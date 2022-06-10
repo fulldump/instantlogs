@@ -104,3 +104,16 @@ func TestService_Ingest_LongLivedRequest(t *testing.T) {
 	// Finish request
 	pw.Close()
 }
+
+func TestService_Filter_HappyPath(t *testing.T) {
+	// setup
+	s := NewService()
+	s.Data = []byte("Line 1\nLine 2\nLine 3\n")
+	s.Size = len(s.Data)
+
+	// run
+	buff := &bytes.Buffer{}
+	filterErr := s.Filter(buff, []string{"2"}, false)
+	AssertNil(filterErr)
+	AssertEqual(buff.String(), "Line 2\n")
+}

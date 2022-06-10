@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/http"
+	"regexp"
 	"sync"
+	"time"
 )
 
 type Service struct {
@@ -43,6 +46,51 @@ func (s *Service) newReader() *storageReader { // return io.Reader
 }
 
 func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
+
+	// Multiple regexps
+	compiledRegexps := make([]*regexp.Regexp, len(regexps))
+	for i, e := range regexps {
+		r, err := regexp.Compile(e)
+		if err != nil {
+			return fmt.Errorf("bad regexp '%s': %w", e, err)
+		}
+		compiledRegexps[i] = r
+	}
+
+	// Workaround, embed into io.Writer?
+	flusher, flusherOk := w.(http.Flusher)
+
+	lines := bufio.NewReader(s.newReader())
+	for {
+		line, readErr := lines.ReadBytes('\n')
+
+		match := true
+		for _, r := range compiledRegexps {
+			if !r.Match(line) {
+				match = false
+				break
+			}
+		}
+		if match {
+			w.Write(line) // todo: handle error
+		}
+
+		if readErr == io.EOF {
+			if follow {
+				// Workaround part2
+				if flusherOk {
+					flusher.Flush()
+				}
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return nil
+		}
+		if readErr != nil {
+			return fmt.Errorf("grep error: %w", readErr)
+		}
+
+	}
 
 	return nil
 }
