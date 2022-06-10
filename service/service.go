@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bufio"
+	"fmt"
 	"io"
 	"sync"
 )
@@ -20,17 +22,17 @@ func NewService() *Service {
 }
 
 // write is internal helper to handle concurrent writes
-func (s *Service) write(p []byte) error { // info: implement io.Writer interface
+func (s *Service) write(p []byte) (int, error) { // info: implement io.Writer interface
 
 	l := len(p)
 
 	s.Mutex.Lock()
 	defer s.Mutex.Unlock()
 
-	copy(s.Data[s.Size:s.Size+l], p) // todo: handle returning value?
+	n := copy(s.Data[s.Size:s.Size+l], p) // todo: handle returning value?
 	s.Size += l
 
-	return nil
+	return n, nil
 }
 
 // newReader is internal helper to handler concurrent and independent reads
@@ -43,6 +45,31 @@ func (s *Service) newReader() *storageReader { // return io.Reader
 func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 
 	return nil
+}
+
+func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
+
+	breader := bufio.NewReader(reader)
+	for {
+		// todo: use scanner?
+		data, readErr := breader.ReadBytes('\n')
+		if readErr == io.EOF {
+			n, err := s.write(data)
+			totaln += n
+			return totaln, err
+		}
+		if readErr != nil {
+			err = fmt.Errorf("read: %w", readErr)
+			return
+		}
+		n, err := s.write(data)
+		totaln += n
+		if err != nil {
+			return totaln, err
+		}
+	}
+
+	return
 }
 
 type storageReader struct {
