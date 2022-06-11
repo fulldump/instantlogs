@@ -4,6 +4,8 @@ import (
 	"bytes"
 	. "github.com/fulldump/biff"
 	"io"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -116,4 +118,25 @@ func TestService_Filter_HappyPath(t *testing.T) {
 	filterErr := s.Filter(buff, []string{"2"}, false)
 	AssertNil(filterErr)
 	AssertEqual(buff.String(), "Line 2\n")
+}
+
+func TestService_ConcurrentWriters(t *testing.T) {
+
+	service := NewService()
+
+	logLine := strings.Repeat("a", 1024) + "\n"
+	logsSample := strings.Repeat(logLine, 10)
+
+	concurrentWriters := 10000
+	wg := &sync.WaitGroup{}
+	for i := 0; i < concurrentWriters; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			service.Ingest(strings.NewReader(logsSample))
+		}()
+	}
+	wg.Wait()
+
+	AssertEqual(service.Size, len(logsSample)*concurrentWriters)
 }
