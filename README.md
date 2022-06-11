@@ -2,15 +2,55 @@
 
 Real time logs aggregation service
 
-## How to run
+## How to compile
 
-With golang installed run:
+With golang installed build all:
+
+```shell
+make build
+```
+
+## How to run the server
+
+Once compiled, just launch the binary:
+
+```shell
+./bin/instantlogsd
+```
+
+Alternatively, compile and run on the fly:
 
 ```shell
 make run
 ```
 
-## First steps
+## How to send logs with the client
+
+### Using std input
+
+```shell
+your-binary | ./bin/instantlogs
+```
+
+Example, use logs from journalctl:
+
+```shell
+journalctl -f | ./bin/instantlogs
+```
+
+Or just from a file...
+
+```shell
+cat /var/log/*.log | ./bin/instantlogs
+```
+
+### Using existing file
+
+```shell
+./bin/instantlogs --file /var/log/kern.log
+```
+
+## First steps with cURL
 
 1) Start listening new logs...
 
