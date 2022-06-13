@@ -1,1 +1,125 @@
-<h1>InstantLogs</h1>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>InstantLogs.io</title>
+    <style>
+        html {
+            color: silver;
+            background-color: #333;
+            font-family: monospace;
+        }
+
+        #user_input_regexp {
+            border: solid silver 1px;
+            color: silver;
+            font-family: monospace;
+            background-color: transparent;
+            width: 100%;
+        }
+
+        .logs > div:hover {
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" style="position: fixed; top: 0; left: 0; right: 0; border-bottom: solid white 1px; background-color: #333; padding: 4px;">
+        <span style="font-size: 20px; font-weight: bold; color: white;">InstantLogs.io</span>
+    </div>
+    <div id="user_output_logs" class="logs" style="padding-top: 50px;">Hello, this is instant logs web console.<br>Type your regest and hit enter, or just hit enter.</div>
+    <div class="footer" style="padding: 4px; position: sticky; bottom: 0; background-color: #333;">
+        <input id="user_input_regexp" type="text" autofocus>
+    </div>
+    <script>
+
+        var user_output_logs = document.getElementById('user_output_logs');
+        var user_input_regexp = document.getElementById('user_input_regexp');
+
+        var lastRegexp = '';
+
+        user_input_regexp.addEventListener('keyup', function(e) {
+            if (e.code === "Enter") {
+                user_output_logs.innerHTML = ''; // todo: this is brute style
+                lastRegexp = this.value;
+                getLogs(lastRegexp);
+                return;
+            }
+            if (e.code === 'Escape') {
+                if (this.value == lastRegexp) {
+                    this.value = '';
+                } else {
+                    this.value = lastRegexp;
+                }
+                return;
+            }
+        }, true);
+
+        function addLine(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            user_output_logs.appendChild(div);
+        }
+
+
+        var lastAbortController = null;
+        function getLogs(regexp) {
+
+            // Cancel ongoing request (just in case)
+            if (lastAbortController) lastAbortController.abort();
+            lastAbortController = new AbortController();
+
+            // Build url
+            var u = '/filter?follow';
+            if (regexp) {
+                u += '&regex='+encodeURIComponent(regexp);
+            }
+
+            // Fetch in streaming
+            fetch(u, {
+                method: 'GET',
+                signal: lastAbortController.signal, // required to cancel the request
+            })
+                .then(response => {
+
+                    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+                    let lineFragment = '';
+
+                    let readChunk = function () {
+                        reader.read().then(function(result) {
+                            if (result.done) {
+                                console.log("DONE!");
+                                return;
+                            }
+
+                            let lines = result.value.split('\n');
+                            lines[0] = lineFragment + lines[0];
+
+                            let lastLine = lines.pop();
+                            if (lastLine != '') {
+                                lineFragment = lastLine;
+                            }
+
+                            lines.forEach(addLine);
+
+                            readChunk(); // continue with the next chunk
+                        });
+                    };
+
+                    readChunk(); // start reading...
+                })
+                .catch(function (err) {
+                    console.log("fetch err:", err)
+                });
+
+            // setInterval(function (){
+            //     addLine('lalalaa');
+            // }, 100)
+
+        };
+
+    </script>
+</body>
+</html>
