@@ -23,13 +23,18 @@
         .logs > div:hover {
             background-color: #222;
         }
+
+        .logs > div > mark {
+            background-color: transparent;
+            color: red;
+        }
     </style>
 </head>
 <body>
     <div class="header" style="position: fixed; top: 0; left: 0; right: 0; border-bottom: solid white 1px; background-color: #333; padding: 4px;">
         <span style="font-size: 20px; font-weight: bold; color: white;">InstantLogs.io</span>
     </div>
-    <div id="user_output_logs" class="logs" style="padding-top: 50px;">Hello, this is instant logs web console.<br>Type your regest and hit enter, or just hit enter.</div>
+    <div id="user_output_logs" class="logs" style="padding-top: 32px;">Hello, this is instant logs web console.<br>Type your regest and hit enter, or just hit enter.</div>
     <div class="footer" style="padding: 4px; position: sticky; bottom: 0; background-color: #333;">
         <input id="user_input_regexp" type="text" autofocus>
     </div>
@@ -63,6 +68,11 @@
             user_output_logs.appendChild(div);
         }
 
+        function addLineUnsafe(text) {
+            const div = document.createElement('div');
+            div.innerHTML = text;
+            user_output_logs.appendChild(div);
+        }
 
         var lastAbortController = null;
         function getLogs(regexp) {
@@ -76,6 +86,10 @@
             if (regexp) {
                 u += '&regex='+encodeURIComponent(regexp);
             }
+
+            // Prepare regex for colorize...
+            const colorReg = new RegExp(regexp, 'g');
+
 
             // Fetch in streaming
             fetch(u, {
@@ -102,7 +116,18 @@
                                 lineFragment = lastLine;
                             }
 
-                            lines.forEach(addLine);
+                            const autoscroll = (document.body.clientHeight + document.body.scrollTop) == document.body.scrollHeight;
+
+                            // lines.forEach(addLine); // Without color :D
+
+
+                            lines.forEach(line => {
+                                addLineUnsafe(line.replace(colorReg, '<mark>$&</mark>'));
+                            })
+
+                            if (autoscroll) {
+                                window.scrollTo(0, document.body.scrollHeight);
+                            }
 
                             readChunk(); // continue with the next chunk
                         });
@@ -114,11 +139,14 @@
                     console.log("fetch err:", err)
                 });
 
-            // setInterval(function (){
-            //     addLine('lalalaa');
-            // }, 100)
 
-        };
+        }
+
+
+        // setInterval(function (){
+        //     window.scrollTo(0, document.body.scrollHeight);
+        // }, 100);
+
 
     </script>
 </body>

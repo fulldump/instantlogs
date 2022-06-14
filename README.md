@@ -66,3 +66,7 @@ curl http://localhost:8080/ingest --data-binary @/tmp/some.log
 
 3) Enjoy
 
+## Random notes
+
+Use sample logs from https://github.com/logpai/loghub
+
