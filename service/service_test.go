@@ -2,8 +2,10 @@ package service
 
 import (
 	"bytes"
+	"fmt"
 	. "github.com/fulldump/biff"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -139,4 +141,37 @@ func TestService_ConcurrentWriters(t *testing.T) {
 	wg.Wait()
 
 	AssertEqual(service.Size, len(logsSample)*concurrentWriters)
+}
+
+func TestService_Filter_Benchmark(t *testing.T) {
+
+	if os.Getenv("BENCHMARK") == "" {
+		t.SkipNow()
+	}
+
+	// Setup
+	s := NewService()
+	s.Data = make([]byte, 6*1024*1024*1024)
+
+	t0 := time.Now()
+	line := []byte(strings.Repeat("a", 1023) + "\n")
+	maxLines := cap(s.Data)/len(line) - 1
+	for i := 0; i < maxLines; i++ {
+		s.write(line)
+	}
+	s.write([]byte("Hello world!\n"))
+	fmt.Println("writing lines took:", time.Since(t0))
+
+	// run
+	t1 := time.Now()
+	output := &bytes.Buffer{}
+	filterErr := s.Filter(output, []string{"world"}, false)
+	elapsed := time.Since(t1)
+	fmt.Println("filter took:", elapsed)
+	fmt.Println("lines:", maxLines)
+	fmt.Println("throughput (rows per second):", int(float64(maxLines)/elapsed.Seconds()))
+
+	// check
+	AssertNil(filterErr)
+	AssertEqual(output.String(), "Hello world!\n")
 }

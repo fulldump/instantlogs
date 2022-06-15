@@ -2,6 +2,7 @@ package service
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -60,9 +61,24 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 	// Workaround, embed into io.Writer?
 	flusher, flusherOk := w.(http.Flusher)
 
-	lines := bufio.NewReader(s.newReader())
+	start := 0
 	for {
-		line, readErr := lines.ReadBytes('\n')
+		index := bytes.IndexByte(s.Data[start:s.Size], '\n')
+		if index == -1 {
+			if follow {
+				// Workaround part2
+				if flusherOk {
+					flusher.Flush()
+				}
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return nil
+		}
+
+		end := start + index + 1 // 1 is the new line char
+		line := s.Data[start:end]
+		start = end
 
 		match := true
 		for _, r := range compiledRegexps {
@@ -74,22 +90,6 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 		if match {
 			w.Write(line) // todo: handle error
 		}
-
-		if readErr == io.EOF {
-			if follow {
-				// Workaround part2
-				if flusherOk {
-					flusher.Flush()
-				}
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			return nil
-		}
-		if readErr != nil {
-			return fmt.Errorf("grep error: %w", readErr)
-		}
-
 	}
 
 	return nil
