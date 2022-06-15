@@ -29,6 +29,7 @@
             color: red;
         }
     </style>
+    <script src="js/text-encode-transform.js" type="text/javascript"></script>
 </head>
 <body>
     <div class="header" style="position: fixed; top: 0; left: 0; right: 0; border-bottom: solid white 1px; background-color: #333; padding: 4px;">
@@ -72,14 +73,22 @@
             }
         }, true);
 
+        const maxLines = 2000;
+        function getDiv() {
+            if (user_output_logs.childNodes.length > maxLines) {
+                user_output_logs.removeChild(user_output_logs.childNodes[0]);
+            }
+            return document.createElement('div');
+        }
+
         function addLine(text) {
-            const div = document.createElement('div');
+            const div = getDiv();
             div.innerText = text;
             user_output_logs.appendChild(div);
         }
 
         function addLineUnsafe(text) {
-            const div = document.createElement('div');
+            const div = getDiv();
             div.innerHTML = text;
             user_output_logs.appendChild(div);
         }
@@ -112,6 +121,7 @@
                     let lineFragment = '';
 
                     let readChunk = function () {
+                        console.log("chunk")
                         reader.read().then(function(result) {
                             if (result.done) {
                                 console.log("DONE!");
@@ -149,14 +159,7 @@
                     console.log("fetch err:", err)
                 });
 
-
         }
-
-
-        // setInterval(function (){
-        //     window.scrollTo(0, document.body.scrollHeight);
-        // }, 100);
-
 
     </script>
 </body>
