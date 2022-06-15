@@ -18,7 +18,7 @@ type Config struct {
 
 func main() {
 
-	fmt.Println(banner)
+	fmt.Print(banner)
 
 	c := &Config{
 		Addr: ":8080",
