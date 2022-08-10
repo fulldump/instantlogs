@@ -27,6 +27,10 @@ func (b *BigBlock) Write(p []byte) (n int, err error) {
 	b.BufferMutex.Lock()
 	defer b.BufferMutex.Unlock()
 
+	if len(b.Buffer) < b.BufferSize+l {
+		return 0, io.EOF
+	}
+
 	n = copy(b.Buffer[b.BufferSize:b.BufferSize+l], p)
 	b.BufferSize += l
 

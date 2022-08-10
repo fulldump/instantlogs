@@ -1,6 +1,7 @@
 package bigblock
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -19,4 +20,15 @@ func TestBigBlock_HappyPath(t *testing.T) {
 
 	r2 := bb.NewReader()
 	io.Copy(os.Stdout, r2)
+}
+
+func TestBigBlock_EndOfFile(t *testing.T) {
+
+	bb := NewWithBuffer(make([]byte, 10))
+
+	bb.Write([]byte("hello\n"))
+
+	n, err := bb.Write([]byte("world\n"))
+
+	fmt.Println(n, err)
 }
