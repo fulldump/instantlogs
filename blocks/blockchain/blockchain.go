@@ -8,10 +8,11 @@ import (
 )
 
 type BlockChain struct {
-	firstEntry   *blockNode
-	lastEntry    *blockNode
-	blocksMutex  sync.Mutex
-	blockFactory func() blocks.Blocker
+	firstEntry              *blockNode
+	lastEntry               *blockNode
+	blocksMutex             sync.Mutex
+	blockFactory            func() blocks.Blocker
+	callbacksBlockCompleted []func(block blocks.Blocker)
 }
 
 type blockNode struct {
@@ -42,6 +43,9 @@ func (b *BlockChain) Write(p []byte) (n int, err error) {
 			block: b.blockFactory(),
 		}
 		b.lastEntry.next = newEntry
+		for _, callback := range b.callbacksBlockCompleted {
+			callback(b.lastEntry.block)
+		}
 		b.lastEntry = newEntry
 		return newEntry.block.Write(p)
 	}
@@ -55,6 +59,10 @@ func (b *BlockChain) NewReader() io.Reader {
 		blockReader:  b.firstEntry.block.NewReader(),
 		blockChain:   b,
 	}
+}
+
+func (b *BlockChain) OnBlockCompleted(f func(block blocks.Blocker)) {
+	b.callbacksBlockCompleted = append(b.callbacksBlockCompleted, f)
 }
 
 type blockChainReader struct {
