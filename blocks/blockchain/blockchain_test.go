@@ -23,7 +23,7 @@ func Test_BlockChain_HappyPath(t *testing.T) {
 	b.Write([]byte("whatever22\n"))
 	b.Write([]byte("zzz\n"))
 
-	biff.AssertEqual(len(b.blocks), 4)
+	//biff.AssertEqual(len(b.blocks), 4)
 
 	data, err := io.ReadAll(b.NewReader())
 	fmt.Println(string(data), err)
@@ -57,8 +57,8 @@ func Test_BlockChain_1Kbuffer(t *testing.T) {
 	b.Write([]byte("whatever22\n"))
 	b.Write([]byte("zzz\n"))
 
-	biff.AssertEqual(len(b.blocks), 1)
-	biff.AssertEqual(string(b.blocks[0].(*bigblock.BigBlock).Buffer[0:36]),
-		"hello\nworld\nwhatever\nwhatever22\nzzz\n")
+	allLogs, err := io.ReadAll(b.NewReader())
+	biff.AssertNil(err)
+	biff.AssertEqual(string(allLogs), "hello\nworld\nwhatever\nwhatever22\nzzz\n")
 
 }
