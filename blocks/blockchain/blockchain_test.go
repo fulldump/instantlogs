@@ -1,10 +1,14 @@
 package blockchain
 
 import (
+	"fmt"
+	"io"
+	"testing"
+
 	"github.com/fulldump/biff"
+
 	"instantlogs/blocks"
 	"instantlogs/blocks/bigblock"
-	"testing"
 )
 
 func Test_BlockChain_HappyPath(t *testing.T) {
@@ -21,6 +25,24 @@ func Test_BlockChain_HappyPath(t *testing.T) {
 
 	biff.AssertEqual(len(b.blocks), 4)
 
+	data, err := io.ReadAll(b.NewReader())
+	fmt.Println(string(data), err)
+
+}
+
+func Test_BlockChain_MaxLine(t *testing.T) {
+
+	b := New(func() blocks.Blocker {
+		return bigblock.NewWithBuffer(make([]byte, 10))
+	})
+
+	b.Write([]byte("short\n"))
+	b.Write([]byte("exactline\n"))
+	b.Write([]byte("looooooooong\n"))
+
+	data, err := io.ReadAll(b.NewReader())
+	biff.AssertNil(err)
+	biff.AssertEqual(string(data), "short\nexactline\n")
 }
 
 func Test_BlockChain_1Kbuffer(t *testing.T) {
@@ -36,9 +58,6 @@ func Test_BlockChain_1Kbuffer(t *testing.T) {
 	b.Write([]byte("zzz\n"))
 
 	biff.AssertEqual(len(b.blocks), 1)
-
-	//data, _ := io.ReadAll(b.blocks[0].(bigblock.BigBlock).Buffer)
-
 	biff.AssertEqual(string(b.blocks[0].(*bigblock.BigBlock).Buffer[0:36]),
 		"hello\nworld\nwhatever\nwhatever22\nzzz\n")
 
