@@ -10,6 +10,9 @@ import (
 	"github.com/fulldump/biff"
 	"github.com/fulldump/box"
 
+	"instantlogs/blocks"
+	"instantlogs/blocks/bigblock"
+	"instantlogs/blocks/blockchain"
 	"instantlogs/service"
 )
 
@@ -18,7 +21,10 @@ import (
 func TestNewApi_HappyPath(t *testing.T) {
 
 	// setup
-	api := NewApi(service.NewService(), "")
+	bc := blockchain.New(func() blocks.Blocker {
+		return bigblock.NewWithBuffer(make([]byte, 1*1024*1024))
+	})
+	api := NewApi(service.NewService(bc), "")
 	mockserver := httptest.NewServer(box.Box2Http(api))
 	defer mockserver.Close()
 

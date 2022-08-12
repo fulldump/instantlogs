@@ -2,47 +2,22 @@ package service
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
-	"sync"
 	"time"
+
+	"instantlogs/blocks"
 )
 
 type Service struct {
-	Data  []byte
-	Size  int
-	Mutex *sync.Mutex // to protect Size
+	block blocks.Blocker
 }
 
-func NewService() *Service {
+func NewService(block blocks.Blocker) *Service {
 	return &Service{
-		Data:  make([]byte, 0, 100*1024*1024), // TODO: make this configurable
-		Size:  0,                              // Amount of used bytes
-		Mutex: &sync.Mutex{},
-	}
-}
-
-// write is internal helper to handle concurrent writes
-func (s *Service) write(p []byte) (int, error) { // info: implement io.Writer interface
-
-	l := len(p)
-
-	s.Mutex.Lock()
-	defer s.Mutex.Unlock()
-
-	n := copy(s.Data[s.Size:s.Size+l], p) // todo: handle returning value?
-	s.Size += l
-
-	return n, nil
-}
-
-// newReader is internal helper to handler concurrent and independent reads
-func (s *Service) newReader() *storageReader { // return io.Reader
-	return &storageReader{
-		service: s,
+		block: block,
 	}
 }
 
@@ -61,24 +36,10 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 	// Workaround, embed into io.Writer?
 	flusher, flusherOk := w.(http.Flusher)
 
-	start := 0
-	for {
-		index := bytes.IndexByte(s.Data[start:s.Size], '\n')
-		if index == -1 {
-			if follow {
-				// Workaround part2
-				if flusherOk {
-					flusher.Flush()
-				}
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			return nil
-		}
+	lines := bufio.NewReader(s.block.NewReader())
 
-		end := start + index + 1 // 1 is the new line char
-		line := s.Data[start:end]
-		start = end
+	for {
+		line, readErr := lines.ReadBytes('\n')
 
 		match := true
 		for _, r := range compiledRegexps {
@@ -90,6 +51,19 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 		if match {
 			w.Write(line) // todo: handle error
 		}
+
+		if readErr == io.EOF || len(line) == 0 {
+			if follow {
+				// Workaround part2
+				if flusherOk {
+					flusher.Flush()
+				}
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return nil
+		}
+
 	}
 
 	return nil
@@ -100,9 +74,9 @@ func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
 	breader := bufio.NewReader(reader)
 	for {
 		// todo: use scanner?
-		data, readErr := breader.ReadBytes('\n')
+		data, readErr := breader.ReadBytes('\n') // TODO: split also by \r and \r\n to support mac and win log styles
 		if readErr == io.EOF {
-			n, err := s.write(data)
+			n, err := s.block.Write(data) // Write line...
 			totaln += n
 			return totaln, err
 		}
@@ -110,35 +84,12 @@ func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
 			err = fmt.Errorf("read: %w", readErr)
 			return
 		}
-		n, err := s.write(data)
+		n, err := s.block.Write(data) // Write line...
 		totaln += n
 		if err != nil {
 			return totaln, err
 		}
 	}
-
-	return
-}
-
-type storageReader struct {
-	nextByte int
-	service  *Service
-}
-
-func (r *storageReader) Read(p []byte) (n int, err error) { // info: implement io.Reader interface
-
-	pending := r.service.Size - r.nextByte
-	if pending == 0 {
-		return 0, io.EOF
-	}
-
-	len := len(p)
-	if len > pending {
-		len = pending
-	}
-
-	n = copy(p, r.service.Data[r.nextByte:r.nextByte+len])
-	r.nextByte += n
 
 	return
 }

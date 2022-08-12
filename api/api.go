@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/fulldump/box"
-	
+
 	"instantlogs/service"
 	"instantlogs/statics"
 )
@@ -70,10 +70,11 @@ func filter(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 }
 
 func stats(ctx context.Context) interface{} {
-	s := getService(ctx)
+	//s := getService(ctx)
 	return map[string]interface{}{
-		"used":  s.Size,
-		"total": cap(s.Data),
+		// todo: calculate
+		//"used":  s.Size,
+		//"total": cap(s.Data),
 	}
 }
 

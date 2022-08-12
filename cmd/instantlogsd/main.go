@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/fulldump/box"
 	"github.com/fulldump/goconfig"
 
 	"instantlogs/api"
+	"instantlogs/blocks"
+	"instantlogs/blocks/bigblock"
+	"instantlogs/blocks/blockchain"
 	"instantlogs/service"
 )
 
@@ -25,7 +29,17 @@ func main() {
 	}
 	goconfig.Read(&c)
 
-	s := service.NewService()
+	bc := blockchain.New(func() blocks.Blocker {
+		return bigblock.NewWithBuffer(make([]byte, 10*1024*1024))
+	})
+
+	blockCounter := 0
+	bc.OnBlockCompleted(func(block blocks.Blocker) {
+		blockCounter++
+		fmt.Println("New block", blockCounter)
+	})
+
+	s := service.NewService(bc)
 
 	a := api.NewApi(s, c.StaticsDir)
 
@@ -33,8 +47,11 @@ func main() {
 		Addr:    c.Addr,
 		Handler: box.Box2Http(a),
 	}
-	fmt.Printf("Listening on %s\n", server.Addr)
-	server.ListenAndServe()
+	fmt.Fprintf(os.Stderr, "Listening on %s\n", server.Addr)
+	err := server.ListenAndServe()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	}
 }
 
 const banner = `

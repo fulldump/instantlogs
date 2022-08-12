@@ -12,7 +12,7 @@ type BigBlock struct {
 }
 
 func New() *BigBlock {
-	return NewWithBuffer(make([]byte, 1*1024*1024*1024))
+	return NewWithBuffer(make([]byte, 1*1024*1024))
 }
 
 func NewWithBuffer(buffer []byte) *BigBlock {
