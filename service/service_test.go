@@ -2,7 +2,9 @@ package service
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -72,25 +74,26 @@ func TestService_Ingest_LongLines(t *testing.T) {
 }
 
 func TestService_Ingest_LongLivedRequest(t *testing.T) {
-	//
-	//// setup
-	//s := NewService()
-	//
-	//pr, pw := io.Pipe()
-	//go s.Ingest(pr)
-	//
-	//// Sending log 1 + delay
-	//pw.Write([]byte("Log 1\n"))
-	//time.Sleep(10 * time.Millisecond)
-	//AssertEqual(string(s.Data[:s.Size]), "Log 1\n")
-	//
-	//// Sending log 2 + delay
-	//pw.Write([]byte("Log 2\n"))
-	//time.Sleep(10 * time.Millisecond)
-	//AssertEqual(string(s.Data[:s.Size]), "Log 1\nLog 2\n")
-	//
-	//// Finish request
-	//pw.Close()
+
+	// setup
+	bb := bigblock.New()
+	s := NewService(bb)
+
+	pr, pw := io.Pipe()
+	go s.Ingest(pr)
+
+	// Sending log 1 + delay
+	pw.Write([]byte("Log 1\n"))
+	time.Sleep(10 * time.Millisecond)
+	AssertEqual(string(bb.Buffer[:bb.BufferSize]), "Log 1\n")
+
+	// Sending log 2 + delay
+	pw.Write([]byte("Log 2\n"))
+	time.Sleep(10 * time.Millisecond)
+	AssertEqual(string(bb.Buffer[:bb.BufferSize]), "Log 1\nLog 2\n")
+
+	// Finish request
+	pw.Close()
 }
 
 func TestService_Filter_HappyPath(t *testing.T) {
@@ -133,34 +136,34 @@ func TestService_ConcurrentWriters(t *testing.T) {
 }
 
 func TestService_Filter_Benchmark(t *testing.T) {
-	//
-	//if os.Getenv("BENCHMARK") == "" {
-	//	t.SkipNow()
-	//}
-	//
-	//// Setup
-	//s := NewService()
-	//s.Data = make([]byte, 6*1024*1024*1024)
-	//
-	//t0 := time.Now()
-	//line := []byte(strings.Repeat("a", 1023) + "\n")
-	//maxLines := cap(s.Data)/len(line) - 1
-	//for i := 0; i < maxLines; i++ {
-	//	s.write(line)
-	//}
-	//s.write([]byte("Hello world!\n"))
-	//fmt.Println("writing lines took:", time.Since(t0))
-	//
-	//// run
-	//t1 := time.Now()
-	//output := &bytes.Buffer{}
-	//filterErr := s.Filter(output, []string{"world"}, false)
-	//elapsed := time.Since(t1)
-	//fmt.Println("filter took:", elapsed)
-	//fmt.Println("lines:", maxLines)
-	//fmt.Println("throughput (rows per second):", int(float64(maxLines)/elapsed.Seconds()))
-	//
-	//// check
-	//AssertNil(filterErr)
-	//AssertEqual(output.String(), "Hello world!\n")
+
+	if os.Getenv("BENCHMARK") == "" {
+		t.SkipNow()
+	}
+
+	// Setup
+	bb := bigblock.NewWithBuffer(make([]byte, 6*1024*1024*1024))
+	s := NewService(bb)
+
+	t0 := time.Now()
+	line := []byte(strings.Repeat("a", 1023) + "\n")
+	maxLines := cap(bb.Buffer)/len(line) - 1
+	for i := 0; i < maxLines; i++ {
+		bb.Write(line)
+	}
+	bb.Write([]byte("Hello world!\n"))
+	fmt.Println("writing lines took:", time.Since(t0))
+
+	// run
+	t1 := time.Now()
+	output := &bytes.Buffer{}
+	filterErr := s.Filter(output, []string{"world"}, false)
+	elapsed := time.Since(t1)
+	fmt.Println("filter took:", elapsed)
+	fmt.Println("lines:", maxLines)
+	fmt.Println("throughput (rows per second):", int(float64(maxLines)/elapsed.Seconds()))
+
+	// check
+	AssertNil(filterErr)
+	AssertEqual(output.String(), "Hello world!\n")
 }
