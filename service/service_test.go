@@ -114,6 +114,7 @@ func TestService_ConcurrentWriters(t *testing.T) {
 	bc := blockchain.New(func() blocks.Blocker {
 		return bigblock.New()
 	})
+	bc.MaxBlocks = 100
 	service := NewService(bc)
 
 	logLine := strings.Repeat("a", 1024) + "\n"

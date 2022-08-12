@@ -1,13 +1,17 @@
 package blockchain
 
 import (
+	"fmt"
 	"io"
+	"runtime"
 	"sync"
 
 	"instantlogs/blocks"
 )
 
 type BlockChain struct {
+	MaxBlocks               int
+	NumBlocks               int
 	firstEntry              *blockNode
 	lastEntry               *blockNode
 	blocksMutex             sync.Mutex
@@ -26,6 +30,8 @@ func New(blockFactory func() blocks.Blocker) *BlockChain {
 		block: blockFactory(),
 	}
 	return &BlockChain{
+		MaxBlocks:    10,
+		NumBlocks:    1,
 		blockFactory: blockFactory,
 		firstEntry:   initialEntry,
 		lastEntry:    initialEntry,
@@ -33,6 +39,9 @@ func New(blockFactory func() blocks.Blocker) *BlockChain {
 }
 
 func (b *BlockChain) Write(p []byte) (n int, err error) {
+
+	// todo: hint: when a block is dropped, all its readers should be moved
+	// to the next block
 
 	b.blocksMutex.Lock()
 	defer b.blocksMutex.Unlock()
@@ -42,9 +51,17 @@ func (b *BlockChain) Write(p []byte) (n int, err error) {
 		newEntry := &blockNode{
 			block: b.blockFactory(),
 		}
+		b.NumBlocks++
 		b.lastEntry.next = newEntry
 		for _, callback := range b.callbacksBlockCompleted {
 			callback(b.lastEntry.block)
+		}
+		if b.NumBlocks > b.MaxBlocks { // todo: add callbackBlockDropped
+			// Drop first block
+			b.NumBlocks--
+			b.firstEntry = b.firstEntry.next
+			go runtime.GC() // todo: just in case, review the impact of this!
+			fmt.Println("Block dropped")
 		}
 		b.lastEntry = newEntry
 		return newEntry.block.Write(p)
