@@ -50,6 +50,8 @@ cat /var/log/*.log | ./bin/instantlogs
 ./bin/instantlogs --file /var/log/kern.log
 ```
 
+Get some sample files from: https://www.secrepo.com/
+
 ## First steps with cURL
 
 1) Start listening new logs...

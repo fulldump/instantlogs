@@ -59,10 +59,17 @@ func ingest(w http.ResponseWriter, r *http.Request, ctx context.Context) interfa
 
 func filter(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 
+	follow := len(r.URL.Query()["follow"]) > 0
+
+	go func() {
+		<-r.Context().Done()
+		follow = false
+	}()
+
 	err := getService(ctx).Filter(
 		w,
 		r.URL.Query()["regex"],
-		len(r.URL.Query()["follow"]) > 0,
+		&follow,
 	)
 	if err != nil {
 		fmt.Println("ERROR:", err.Error())
@@ -70,17 +77,5 @@ func filter(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 }
 
 func stats(ctx context.Context) interface{} {
-	//s := getService(ctx)
-	return map[string]interface{}{
-		// todo: calculate
-		//"used":  s.Size,
-		//"total": cap(s.Data),
-	}
-}
-
-func getService(ctx context.Context) *service.Service {
-
-	value := ctx.Value("instantlogs-service")
-
-	return value.(*service.Service) // this will raise a panic on error!!
+	return getService(ctx).Stats()
 }

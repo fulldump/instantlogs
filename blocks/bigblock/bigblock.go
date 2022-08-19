@@ -11,6 +11,14 @@ type BigBlock struct {
 	BufferMutex sync.Mutex
 }
 
+func (b *BigBlock) Stats() map[string]interface{} {
+	return map[string]interface{}{
+		"cap":  cap(b.Buffer),
+		"len":  b.BufferSize,
+		"type": "bigblock",
+	}
+}
+
 func New() *BigBlock {
 	return NewWithBuffer(make([]byte, 1*1024*1024))
 }

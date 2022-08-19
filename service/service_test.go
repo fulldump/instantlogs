@@ -103,8 +103,9 @@ func TestService_Filter_HappyPath(t *testing.T) {
 	bb.Write([]byte("Line 1\nLine 2\nLine 3\n"))
 
 	// run
+	follow := false
 	buff := &bytes.Buffer{}
-	filterErr := s.Filter(buff, []string{"2"}, false)
+	filterErr := s.Filter(buff, []string{"2"}, &follow)
 	AssertNil(filterErr)
 	AssertEqual(buff.String(), "Line 2\n")
 }
@@ -157,8 +158,9 @@ func TestService_Filter_Benchmark(t *testing.T) {
 
 	// run
 	t1 := time.Now()
+	follow := false
 	output := &bytes.Buffer{}
-	filterErr := s.Filter(output, []string{"world"}, false)
+	filterErr := s.Filter(output, []string{"world"}, &follow)
 	elapsed := time.Since(t1)
 	fmt.Println("filter took:", elapsed)
 	fmt.Println("lines:", maxLines)

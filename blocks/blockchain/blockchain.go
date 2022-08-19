@@ -19,8 +19,29 @@ type BlockChain struct {
 	callbacksBlockCompleted []func(block blocks.Blocker)
 }
 
+func (b *BlockChain) Stats() map[string]interface{} {
+
+	blocksList := []interface{}{}
+	for entry := b.firstEntry; entry != nil; entry = entry.next {
+		if stats, ok := entry.block.(blocks.Stater); ok {
+			blocksList = append(blocksList, stats.Stats())
+		}
+
+	}
+
+	result := map[string]interface{}{
+		"type":       "blockchain",
+		"num_blocks": b.NumBlocks,
+		"max_blocks": b.MaxBlocks,
+		"blocks":     blocksList,
+	}
+
+	return result
+}
+
 type blockNode struct {
 	block blocks.Blocker
+	stats blocks.Stater
 	next  *blockNode
 	// todo: add timestamp
 }
