@@ -18,3 +18,6 @@ build-all:
 deps:
 	go mod tidy
 	go mod vendor
+
+clean:
+	rm -fr bin/*

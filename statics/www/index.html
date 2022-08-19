@@ -93,6 +93,33 @@
             user_output_logs.appendChild(div);
         }
 
+        function addLineSafe(colorReg, line) {
+
+            const div = getDiv();
+
+            let it = line.matchAll(colorReg);
+
+            let lastIndex = 0;
+            for (;;) {
+                let match = it.next();
+                if (match.done) break;
+
+                let plainText = line.substring(lastIndex, match.value.index);
+                div.appendChild(document.createTextNode(plainText));
+
+                let colorText = match.value[0];
+                let mark = document.createElement('mark');
+                mark.innerText = colorText;
+                div.appendChild(mark);
+
+                lastIndex = match.value.index + colorText.length;
+            }
+            let plainText = line.substring(lastIndex);
+            div.appendChild(document.createTextNode(plainText));
+
+            user_output_logs.appendChild(div);
+        }
+
         var lastAbortController = null;
         function getLogs(regexp) {
 
@@ -142,7 +169,8 @@
 
 
                             lines.forEach(line => {
-                                addLineUnsafe(line.replace(colorReg, '<mark>$&</mark>'));
+                                addLineSafe(colorReg, line)
+                                //addLineUnsafe(line.replace(colorReg, '<mark>$&</mark>'));
                             })
 
                             if (autoscroll) {
