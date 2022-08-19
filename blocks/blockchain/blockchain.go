@@ -1,10 +1,10 @@
 package blockchain
 
 import (
-	"fmt"
 	"io"
 	"runtime"
 	"sync"
+	"time"
 
 	"instantlogs/blocks"
 )
@@ -17,41 +17,45 @@ type BlockChain struct {
 	blocksMutex             sync.Mutex
 	blockFactory            func() blocks.Blocker
 	callbacksBlockCompleted []func(block blocks.Blocker)
+	callbacksBlockDiscarded []func(block blocks.Blocker)
 }
 
 func (b *BlockChain) Stats() map[string]interface{} {
 
 	blocksList := []interface{}{}
 	for entry := b.firstEntry; entry != nil; entry = entry.next {
-		if stats, ok := entry.block.(blocks.Stater); ok {
-			blocksList = append(blocksList, stats.Stats())
+		stats := map[string]interface{}{}
+		if block, ok := entry.block.(blocks.Stater); ok {
+			stats = block.Stats()
 		}
-
+		stats["timestamp"] = entry.timestamp
+		blocksList = append(blocksList, stats)
 	}
 
 	result := map[string]interface{}{
 		"type":       "blockchain",
 		"num_blocks": b.NumBlocks,
 		"max_blocks": b.MaxBlocks,
-		"blocks":     blocksList,
+		"chain":      blocksList,
 	}
 
 	return result
 }
 
 type blockNode struct {
-	block blocks.Blocker
-	stats blocks.Stater
-	next  *blockNode
-	// todo: add timestamp
+	block     blocks.Blocker
+	stats     blocks.Stater
+	next      *blockNode
+	timestamp time.Time
 }
 
 func New(blockFactory func() blocks.Blocker) *BlockChain {
 	initialEntry := &blockNode{
-		block: blockFactory(),
+		block:     blockFactory(),
+		timestamp: time.Now().UTC(),
 	}
 	return &BlockChain{
-		MaxBlocks:    10,
+		MaxBlocks:    4,
 		NumBlocks:    1,
 		blockFactory: blockFactory,
 		firstEntry:   initialEntry,
@@ -70,19 +74,23 @@ func (b *BlockChain) Write(p []byte) (n int, err error) {
 	n, err = b.lastEntry.block.Write(p)
 	if err == io.EOF {
 		newEntry := &blockNode{
-			block: b.blockFactory(),
+			block:     b.blockFactory(),
+			timestamp: time.Now().UTC(),
 		}
 		b.NumBlocks++
 		b.lastEntry.next = newEntry
 		for _, callback := range b.callbacksBlockCompleted {
 			callback(b.lastEntry.block)
 		}
-		if b.NumBlocks > b.MaxBlocks { // todo: add callbackBlockDropped
+		if b.NumBlocks > b.MaxBlocks {
+			nodeDiscarded := b.firstEntry
+			for _, callback := range b.callbacksBlockDiscarded {
+				callback(nodeDiscarded.block)
+			}
 			// Drop first block
 			b.NumBlocks--
 			b.firstEntry = b.firstEntry.next
 			go runtime.GC() // todo: just in case, review the impact of this!
-			fmt.Println("Block dropped")
 		}
 		b.lastEntry = newEntry
 		return newEntry.block.Write(p)
@@ -101,6 +109,10 @@ func (b *BlockChain) NewReader() io.Reader {
 
 func (b *BlockChain) OnBlockCompleted(f func(block blocks.Blocker)) {
 	b.callbacksBlockCompleted = append(b.callbacksBlockCompleted, f)
+}
+
+func (b *BlockChain) OnBlockDiscarded(f func(block blocks.Blocker)) {
+	b.callbacksBlockDiscarded = append(b.callbacksBlockDiscarded, f)
 }
 
 type blockChainReader struct {

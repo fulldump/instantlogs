@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -16,8 +17,10 @@ import (
 )
 
 type Config struct {
-	Addr       string
-	StaticsDir string
+	Addr       string `usage:"HTTP address to expose the service"`
+	StaticsDir string `usage:"Statics dir, if empty embedded statics will be used"`
+	BlockSize  int    `usage:"BlockSize (in MiB)"`
+	BlockNum   int    `usage:"Number of blocks"`
 }
 
 func main() {
@@ -25,18 +28,25 @@ func main() {
 	fmt.Print(banner)
 
 	c := &Config{
-		Addr: ":8080",
+		Addr:      ":8080",
+		BlockSize: 20,
+		BlockNum:  5,
 	}
 	goconfig.Read(&c)
 
 	bc := blockchain.New(func() blocks.Blocker {
-		return bigblock.NewWithBuffer(make([]byte, 10*1024*1024))
+		return bigblock.NewWithBuffer(make([]byte, c.BlockSize*1024*1024))
 	})
+	bc.MaxBlocks = c.BlockNum
 
+	// Setup some logs
 	blockCounter := 0
 	bc.OnBlockCompleted(func(block blocks.Blocker) {
 		blockCounter++
-		fmt.Println("New block", blockCounter)
+		log.Println("New block", blockCounter)
+	})
+	bc.OnBlockDiscarded(func(block blocks.Blocker) {
+		log.Println("Block discarded")
 	})
 
 	s := service.NewService(bc)
