@@ -19,7 +19,11 @@ type Blocker interface {
 //}
 
 // Service interface
-type Service interface {
+type Service interface { // TODO: delete? just one implementation
 	Ingest(r io.Reader) (n int, err error)
 	Filter(w io.Writer, regexps []string, follow bool) (err error) // todo: explore composition on this
+}
+
+type Stater interface {
+	Stats() map[string]interface{}
 }

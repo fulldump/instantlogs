@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"instantlogs/blocks"
@@ -13,6 +14,16 @@ import (
 
 type Service struct {
 	block blocks.Blocker
+
+	// stats
+	totalBytesSent     int64
+	totalBytesReceived int64
+	totalBytesFiltered int64
+	lastRegexps        []string
+	concurrentFilters  int
+	concurrentIngests  int
+	totalFilters       int
+	totalIngests       int
 }
 
 func NewService(block blocks.Blocker) *Service {
@@ -21,7 +32,16 @@ func NewService(block blocks.Blocker) *Service {
 	}
 }
 
-func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
+func (s *Service) Filter(w io.Writer, regexps []string, follow *bool) error {
+
+	s.lastRegexps = append(s.lastRegexps, strings.Join(regexps, " AND "))
+	for len(s.lastRegexps) > 10 {
+		s.lastRegexps = s.lastRegexps[1:]
+	}
+
+	s.totalFilters++
+	s.concurrentFilters++
+	defer func() { s.concurrentFilters-- }()
 
 	// Multiple regexps
 	compiledRegexps := make([]*regexp.Regexp, len(regexps))
@@ -41,6 +61,8 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 	for {
 		line, readErr := lines.ReadBytes('\n')
 
+		s.totalBytesFiltered += int64(len(line))
+
 		match := true
 		for _, r := range compiledRegexps {
 			if !r.Match(line) {
@@ -49,11 +71,15 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 			}
 		}
 		if match {
-			w.Write(line) // todo: handle error
+			n, err := w.Write(line) // todo: handle error
+			if err != nil {
+				fmt.Println("ERR Filtering:", err.Error())
+			}
+			s.totalBytesSent += int64(n)
 		}
 
 		if readErr == io.EOF || len(line) == 0 {
-			if follow {
+			if *follow {
 				// Workaround part2
 				if flusherOk {
 					flusher.Flush()
@@ -71,6 +97,10 @@ func (s *Service) Filter(w io.Writer, regexps []string, follow bool) error {
 
 func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
 
+	s.totalIngests++
+	s.concurrentIngests++
+	defer func() { s.concurrentIngests-- }()
+
 	breader := bufio.NewReader(reader)
 	for {
 		// todo: use scanner?
@@ -78,6 +108,7 @@ func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
 		if readErr == io.EOF {
 			n, err := s.block.Write(data) // Write line...
 			totaln += n
+			s.totalBytesReceived += int64(n)
 			return totaln, err
 		}
 		if readErr != nil {
@@ -86,10 +117,30 @@ func (s *Service) Ingest(reader io.Reader) (totaln int, err error) {
 		}
 		n, err := s.block.Write(data) // Write line...
 		totaln += n
+		s.totalBytesReceived += int64(n)
 		if err != nil {
 			return totaln, err
 		}
 	}
 
 	return
+}
+
+func (s *Service) Stats() map[string]interface{} {
+	result := map[string]interface{}{
+		"total_bytes_sent":     s.totalBytesSent,
+		"total_bytes_received": s.totalBytesReceived,
+		"total_bytes_filtered": s.totalBytesFiltered,
+		"last_regexps":         s.lastRegexps,
+		"concurrent_filters":   s.concurrentFilters,
+		"concurrent_ingests":   s.concurrentIngests,
+		"total_filters":        s.totalFilters,
+		"total_ingests":        s.totalIngests,
+	}
+
+	if stats, ok := s.block.(blocks.Stater); ok {
+		result["block"] = stats.Stats()
+	}
+
+	return result
 }
