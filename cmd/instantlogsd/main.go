@@ -9,11 +9,11 @@ import (
 	"github.com/fulldump/box"
 	"github.com/fulldump/goconfig"
 
-	"instantlogs/api"
-	"instantlogs/blocks"
-	"instantlogs/blocks/bigblock"
-	"instantlogs/blocks/blockchain"
-	"instantlogs/service"
+	"github.com/fulldump/instantlogs/api"
+	"github.com/fulldump/instantlogs/blocks"
+	"github.com/fulldump/instantlogs/blocks/bigblock"
+	"github.com/fulldump/instantlogs/blocks/blockchain"
+	"github.com/fulldump/instantlogs/service"
 )
 
 type Config struct {

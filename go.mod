@@ -1,4 +1,4 @@
-module instantlogs
+module github.com/fulldump/instantlogs
 
 go 1.18
 

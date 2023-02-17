@@ -12,9 +12,9 @@ import (
 
 	. "github.com/fulldump/biff"
 
-	"instantlogs/blocks"
-	"instantlogs/blocks/bigblock"
-	"instantlogs/blocks/blockchain"
+	"github.com/fulldump/instantlogs/blocks"
+	"github.com/fulldump/instantlogs/blocks/bigblock"
+	"github.com/fulldump/instantlogs/blocks/blockchain"
 )
 
 func TestService_Ingest_HappyPath(t *testing.T) {

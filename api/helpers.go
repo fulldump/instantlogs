@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	"instantlogs/service"
+	"github.com/fulldump/instantlogs/service"
 )
 
 func getService(ctx context.Context) *service.Service {

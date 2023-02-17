@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"instantlogs/blocks"
+	"github.com/fulldump/instantlogs/blocks"
 )
 
 type BlockChain struct {

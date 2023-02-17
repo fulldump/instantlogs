@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"instantlogs/blocks"
+	"github.com/fulldump/instantlogs/blocks"
 )
 
 type Service struct {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/fulldump/box"
 
-	"instantlogs/service"
-	"instantlogs/statics"
+	"github.com/fulldump/instantlogs/service"
+	"github.com/fulldump/instantlogs/statics"
 )
 
 func NewApi(service *service.Service, staticsDir string) *box.B {

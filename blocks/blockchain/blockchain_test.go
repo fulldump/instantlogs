@@ -7,8 +7,8 @@ import (
 
 	"github.com/fulldump/biff"
 
-	"instantlogs/blocks"
-	"instantlogs/blocks/bigblock"
+	"github.com/fulldump/instantlogs/blocks"
+	"github.com/fulldump/instantlogs/blocks/bigblock"
 )
 
 func Test_BlockChain_HappyPath(t *testing.T) {
@@ -23,7 +23,7 @@ func Test_BlockChain_HappyPath(t *testing.T) {
 	b.Write([]byte("whatever22\n"))
 	b.Write([]byte("zzz\n"))
 
-	//biff.AssertEqual(len(b.blocks), 4)
+	// biff.AssertEqual(len(b.blocks), 4)
 
 	data, err := io.ReadAll(b.NewReader())
 	fmt.Println(string(data), err)
