@@ -2,16 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/fulldump/goconfig"
 	"io"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/fulldump/goconfig"
 )
 
 type Config struct {
-	Server string // sever ingesting endpoint
-	File   string // log file to read
+	Server    string // sever ingesting endpoint
+	File      string // log file to read
+	ApiKey    string
+	ApiSecret string
 }
 
 func main() {
@@ -23,7 +26,7 @@ func main() {
 
 	if stdinHasData() {
 		fmt.Println("INFO: gathering data from stdin")
-		sendStream(io.NopCloser(os.Stdin), c.Server)
+		sendStream(io.NopCloser(os.Stdin), c.Server, c.ApiKey, c.ApiSecret)
 		return
 	}
 
@@ -36,7 +39,7 @@ func main() {
 				time.Sleep(1 * time.Second) // todo: hardcoded magic number
 				continue
 			}
-			sendStream(io.NopCloser(NewFollowRead(f)), c.Server)
+			sendStream(io.NopCloser(NewFollowRead(f)), c.Server, c.ApiKey, c.ApiSecret)
 		}
 		return
 	}
@@ -50,7 +53,7 @@ func stdinHasData() bool {
 	return (fi.Mode() & os.ModeCharDevice) == 0
 }
 
-func sendStream(r io.Reader, endpoint string) error {
+func sendStream(r io.Reader, endpoint, apikey, apisecret string) error {
 	for {
 		fmt.Printf("INFO: sending data to %s...\n", endpoint)
 
@@ -59,6 +62,10 @@ func sendStream(r io.Reader, endpoint string) error {
 		req, err := http.NewRequest(http.MethodPost, endpoint, r)
 		if err != nil {
 			return fmt.Errorf("NewRequest: %w", err)
+		}
+		if apikey != "" && apisecret != "" {
+			req.Header.Set("Api-Key", apikey)
+			req.Header.Set("Api-Secret", apisecret)
 		}
 
 		resp, err := http.DefaultClient.Do(req) // todo: optimize http client for this use
