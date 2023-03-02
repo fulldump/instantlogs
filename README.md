@@ -1,6 +1,6 @@
 # Instantlogs
 
-Real time logs aggregation service
+The real time logs aggregation service.
 
 ## How to compile
 

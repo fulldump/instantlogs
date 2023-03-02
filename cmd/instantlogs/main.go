@@ -10,23 +10,34 @@ import (
 	"github.com/fulldump/goconfig"
 )
 
+var VERSION = "dev"
+
 type Config struct {
-	Server    string // sever ingesting endpoint
-	File      string // log file to read
-	ApiKey    string
-	ApiSecret string
+	Endpoint  string `usage:"[OPTIONAL] Absolute API ingest endpoint"`
+	File      string `usage:"Path to log file"`
+	LoggerId  string `usage:"Logger id"`
+	ApiKey    string `usage:"Credential Api-Key"`
+	ApiSecret string `usage:"Credential Api-Secret"`
+	Version   bool   `usage:"Show version and exit"`
 }
 
 func main() {
 
-	c := &Config{
-		Server: "http://localhost:8080/ingest",
-	}
+	c := &Config{}
 	goconfig.Read(&c)
+
+	if c.Version {
+		fmt.Println(VERSION)
+		os.Exit(0)
+	}
+
+	if c.Endpoint == "" {
+		c.Endpoint = "https://instantlogs.io/v1/loggers/" + c.LoggerId + "/ingest"
+	}
 
 	if stdinHasData() {
 		fmt.Println("INFO: gathering data from stdin")
-		sendStream(io.NopCloser(os.Stdin), c.Server, c.ApiKey, c.ApiSecret)
+		sendStream(io.NopCloser(os.Stdin), c.Endpoint, c.ApiKey, c.ApiSecret)
 		return
 	}
 
@@ -39,7 +50,7 @@ func main() {
 				time.Sleep(1 * time.Second) // todo: hardcoded magic number
 				continue
 			}
-			sendStream(io.NopCloser(NewFollowRead(f)), c.Server, c.ApiKey, c.ApiSecret)
+			sendStream(io.NopCloser(NewFollowRead(f)), c.Endpoint, c.ApiKey, c.ApiSecret)
 		}
 		return
 	}
@@ -54,6 +65,7 @@ func stdinHasData() bool {
 }
 
 func sendStream(r io.Reader, endpoint, apikey, apisecret string) error {
+
 	for {
 		fmt.Printf("INFO: sending data to %s...\n", endpoint)
 
