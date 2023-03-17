@@ -21,6 +21,19 @@ type Config struct {
 	Version   bool   `usage:"Show version and exit"`
 }
 
+type StdinReader struct {
+	Reader io.Reader
+}
+
+func (r StdinReader) Read(p []byte) (n int, err error) {
+	n, err = r.Reader.Read(p)
+	if err == io.EOF {
+		fmt.Println("EOF")
+		os.Exit(3)
+	}
+	return n, err
+}
+
 func main() {
 
 	c := &Config{}
@@ -37,7 +50,7 @@ func main() {
 
 	if stdinHasData() {
 		fmt.Println("INFO: gathering data from stdin")
-		sendStream(io.NopCloser(os.Stdin), c.Endpoint, c.ApiKey, c.ApiSecret)
+		sendStream(StdinReader{os.Stdin}, c.Endpoint, c.ApiKey, c.ApiSecret)
 		return
 	}
 
@@ -87,6 +100,8 @@ func sendStream(r io.Reader, endpoint, apikey, apisecret string) error {
 			continue
 		}
 		fmt.Println("INFO: response status:", resp.Status)
+
+		time.Sleep(1*time.Second)
 	}
 	return nil
 }

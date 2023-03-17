@@ -13,8 +13,8 @@ func main() {
 
 	go func() {
 		log.Println("hello world 1")
-		// log.Println("this is your brand new instantlogs")
-		// log.Println("check the console https://instantlogs.io/")
+		log.Println("this is your brand new instantlogs")
+		log.Println("check the console https://instantlogs.io/")
 		w.Close()
 	}()
 
